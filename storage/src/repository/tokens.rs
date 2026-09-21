@@ -10,7 +10,7 @@
 use entity::{
     file_tokens::{self, DigestTags, Scope, SearchTags, Source},
     files, links, user_files, ActiveValue, ColumnTrait, Condition, ConnectionTrait, EntityTrait,
-    Expr, Func, QueryFilter, QueryOrder, QuerySelect, Uuid,
+    Expr, Func, QueryFilter, QueryOrder, QuerySelect, SimpleExpr, Uuid,
 };
 use error::AppResult;
 
@@ -256,10 +256,9 @@ where
         // An exact name match outranks every token score: it is the file the
         // user typed the name of. Ordered first, ahead of the tag counts.
         if let Some(hash) = name_hash {
-            query = query.order_by_desc(Expr::cust_with_values(
-                "MAX(CASE WHEN files.name_hash = ? THEN 1 ELSE 0 END)",
-                [hash],
-            ));
+            query = query.order_by_desc(SimpleExpr::from(Func::max(
+                Expr::case(files::Column::NameHash.eq(hash), 1).finally(0),
+            )));
         }
 
         let mut query = query
